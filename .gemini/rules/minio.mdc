@@ -1,0 +1,101 @@
+---
+description: This guide provides best practices for using MinIO with Python, focusing on code organization, performance, security, and testing to help developers build efficient and secure S3-compatible applications.
+globs: **/*.py
+---
+# MinIO Best Practices
+
+This document outlines essential best practices for using MinIO in Python applications. By following these guidelines, you'll ensure a secure, efficient, and maintainable codebase when working with MinIO's S3-compatible object storage.
+
+## Code Organization and Structure
+
+### Use a Modular Approach
+Organize your code into modules to improve maintainability and readability.
+
+❌ BAD
+```python
+# all code in a single file
+def upload_file():
+    # upload logic
+    pass
+
+def download_file():
+    # download logic
+    pass
+```
+
+✅ GOOD
+```python
+# structure your project
+# project/
+# ├── minio_client.py
+# ├── file_operations.py
+# └── main.py
+
+# minio_client.py
+from minio import Minio
+
+def get_minio_client():
+    return Minio("play.min.io", access_key="YOUR-ACCESSKEY", secret_key="YOUR-SECRETKEY", secure=True)
+
+# file_operations.py
+from .minio_client import get_minio_client
+
+def upload_file(bucket_name, file_path):
+    client = get_minio_client()
+    client.fput_object(bucket_name, "object_name", file_path)
+
+def download_file(bucket_name, object_name, file_path):
+    client = get_minio_client()
+    client.fget_object(bucket_name, object_name, file_path)
+```
+
+## Common Patterns and Anti-patterns
+
+### Use Presigned URLs for Secure Access
+Always use presigned URLs for uploading and downloading sensitive data.
+
+❌ BAD
+```python
+# Directly exposing upload/download URLs
+client.fput_object(bucket_name, "object_name", file_path)
+```
+
+✅ GOOD
+```python
+from datetime import timedelta
+
+def generate_presigned_url(bucket_name, object_name, expiration=timedelta(minutes=10)):
+    client = get_minio_client()
+    return client.presigned_get_object(bucket_name, object_name, expires=expiration)
+```
+
+## Performance Considerations
+
+### Enable Versioning
+Enable versioning on buckets to protect against accidental deletions and overwrites.
+
+✅ GOOD
+```python
+client.enable_versioning("my-bucket")
+```
+
+## Common Pitfalls and Gotchas
+
+### Avoid Hardcoding Credentials
+Never hardcode your MinIO access and secret keys in your code.
+
+❌ BAD
+```python
+client = Minio("play.min.io", access_key="hardcoded_access_key", secret_key="hardcoded_secret_key", secure=True)
+```
+
+✅ GOOD
+```python
+import os
+
+client = Minio("play.min.io", access_key=os.getenv("MINIO_ACCESS_KEY"), secret_key=os.getenv("MINIO_SECRET_KEY"), secure=True)
+```
+
+## Conclusion
+
+By following these best practices, you'll ensure that your interactions with MinIO are secure, efficient, and maintainable. Always remember to keep your dependencies up to date and adhere to modern Python standards for the best results.

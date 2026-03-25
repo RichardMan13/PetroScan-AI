@@ -1,0 +1,123 @@
+---
+description: This guide provides actionable best practices for using the sentence-transformers library effectively in Python NLP workflows.
+globs: **/*.py
+---
+# sentence-transformers Best Practices
+
+The `sentence-transformers` library is essential for generating embeddings in modern NLP applications. This guide outlines the best practices for code organization, performance optimization, and common pitfalls to avoid when using this library.
+
+## Code Organization and Structure
+
+### Use a Modular Approach
+Organize your code into modules to enhance readability and maintainability. Each module should focus on a specific functionality, such as loading models, encoding text, or performing inference.
+
+**✅ GOOD:**
+```python
+# model_loader.py
+from sentence_transformers import SentenceTransformer
+
+def load_model(model_name: str) -> SentenceTransformer:
+    return SentenceTransformer(model_name)
+```
+
+**❌ BAD:**
+```python
+# main.py
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer('all-MiniLM-L6-v2')  # All logic in one file
+```
+
+### Keep Configuration Separate
+Store model configurations and parameters in a separate configuration file or constants module. This practice simplifies updates and enhances clarity.
+
+**✅ GOOD:**
+```python
+# config.py
+MODEL_NAME = 'all-MiniLM-L6-v2'
+```
+
+**❌ BAD:**
+```python
+# main.py
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Hardcoded model name
+```
+
+## Common Patterns and Anti-patterns
+
+### Use `encode_query()` and `encode_document()`
+For information retrieval tasks, prefer using `encode_query()` and `encode_document()` over the deprecated `encode()` method. This ensures optimized performance and clarity in your code.
+
+**✅ GOOD:**
+```python
+query_embedding = model.encode_query("What is NLP?")
+document_embedding = model.encode_document("Natural Language Processing is a field of AI.")
+```
+
+**❌ BAD:**
+```python
+embedding = model.encode("What is NLP?")  # Using deprecated method
+```
+
+## Performance Considerations
+
+### Leverage ONNX for Inference Speed
+Utilize the ONNX backend for faster inference, especially when deploying models on GPUs or Intel hardware. This can drastically reduce latency in production environments.
+
+**✅ GOOD:**
+```python
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer('all-MiniLM-L6-v2', device='cuda', backend='onnx')
+```
+
+**❌ BAD:**
+```python
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Default backend, slower performance
+```
+
+### Use Mixed Precision
+When initializing your model, use mixed precision formats like `float16` or `bfloat16` to improve speed without significantly sacrificing accuracy.
+
+**✅ GOOD:**
+```python
+model = SentenceTransformer('all-MiniLM-L6-v2', precision='float16')
+```
+
+**❌ BAD:**
+```python
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Default precision, slower inference
+```
+
+## Common Pitfalls and Gotchas
+
+### Avoid Hardcoding Model Names
+Hardcoding model names can lead to issues when updating or changing models. Always use a configuration file or environment variables.
+
+**✅ GOOD:**
+```python
+from config import MODEL_NAME
+model = SentenceTransformer(MODEL_NAME)
+```
+
+**❌ BAD:**
+```python
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Hardcoded model name
+```
+
+### Handle Exceptions Gracefully
+Always wrap model loading and inference calls in try-except blocks to handle potential errors gracefully.
+
+**✅ GOOD:**
+```python
+try:
+    model = SentenceTransformer(MODEL_NAME)
+except Exception as e:
+    print(f"Error loading model: {e}")
+```
+
+**❌ BAD:**
+```python
+model = SentenceTransformer(MODEL_NAME)  # No error handling
+```
+

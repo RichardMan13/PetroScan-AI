@@ -1,0 +1,122 @@
+---
+description: A comprehensive guide to best practices for using Evidently in Python for ML monitoring, focusing on code organization, performance, and testing.
+globs: **/*.py
+---
+# Evidently Best Practices
+
+Evidently is a powerful tool for monitoring machine learning models in production. This guide provides actionable best practices for using Evidently effectively, ensuring your ML models remain reliable and performant.
+
+## 1. Code Organization and Structure
+
+### Use a Clean Project Structure
+
+Organizing your project with a clear structure is essential for maintainability. Follow the modern Python project layout:
+
+```
+my_project/
+│
+├── src/
+│   └── my_project/
+│       ├── __init__.py
+│       ├── config/
+│       │   └── settings.py
+│       ├── core/
+│       │   ├── exceptions.py
+│       │   └── logging.py
+│       ├── models/
+│       │   └── user.py
+│       ├── services/
+│       │   └── user_service.py
+│       ├── api/
+│       │   └── routes.py
+│       └── main.py
+├── tests/
+│   └── test_users.py
+└── scripts/
+    └── run_dev.py
+```
+
+This structure separates concerns and makes it easier to navigate your codebase.
+
+## 2. Common Patterns and Anti-patterns
+
+### Use Evidently’s Built-in Metrics
+
+When monitoring your models, leverage Evidently’s built-in metrics for data drift and model performance. This avoids reinventing the wheel and ensures consistency.
+
+```python
+from evidently.report import Report
+from evidently.metrics import DataDriftMetric
+
+# Create a report
+report = Report()
+
+# Add data drift metric
+report.add_metric(DataDriftMetric(reference_data, current_data))
+
+# Generate the report
+report.save_html('data_drift_report.html')
+```
+
+### Avoid Hardcoding Configuration Values
+
+Hardcoding values makes your application inflexible. Use configuration files or environment variables instead.
+
+❌ BAD:
+```python
+def load_data():
+    data_path = '/path/to/data.csv'  # Hardcoded path
+    ...
+```
+
+✅ GOOD:
+```python
+import os
+
+def load_data():
+    data_path = os.getenv('DATA_PATH', '/default/path/to/data.csv')  # Configurable path
+    ...
+```
+
+## 3. Performance Considerations
+
+### Optimize Data Loading
+
+When working with large datasets, use efficient data loading techniques such as chunking or lazy loading to minimize memory usage.
+
+```python
+import pandas as pd
+
+def load_large_data(file_path):
+    for chunk in pd.read_csv(file_path, chunksize=10000):
+        process_chunk(chunk)  # Process each chunk
+```
+
+## 4. Common Pitfalls and Gotchas
+
+### Don’t Ignore Data Quality Checks
+
+Always validate your data before feeding it into models. Use Evidently’s data quality checks to automate this process.
+
+```python
+from evidently.metrics import DataQualityMetric
+
+# Validate data quality
+data_quality = DataQualityMetric(current_data)
+if not data_quality.is_valid():
+    raise ValueError("Data quality check failed!")
+```
+
+### Be Wary of Model Drift
+
+Regularly check for model drift using Evidently. Implement a monitoring system that triggers alerts when drift is detected.
+
+```python
+from evidently.metrics import ModelDriftMetric
+
+# Check for model drift
+drift_metric = ModelDriftMetric(reference_model, current_model)
+if drift_metric.is_drifted():
+    alert_team()  # Trigger an alert
+```
+

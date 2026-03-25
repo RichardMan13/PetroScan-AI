@@ -1,0 +1,106 @@
+---
+description: This guide provides actionable best practices for using Docling in Python, focusing on OCR and document parsing to enhance accuracy and efficiency.
+globs: **/*.py
+---
+# docling Best Practices
+
+This document outlines best practices for utilizing Docling effectively in Python projects, particularly for OCR and document parsing. By adhering to these guidelines, you will optimize your code organization, improve performance, and enhance the reliability of your document processing applications.
+
+## Code Organization and Structure
+
+### Use a Modular Approach
+Organize your code into modules that reflect the functionality of your application. This makes it easier to maintain and test.
+
+❌ BAD
+```python
+# all code in a single file
+def process_document(doc):
+    # processing logic
+    pass
+
+def extract_data(doc):
+    # extraction logic
+    pass
+```
+
+✅ GOOD
+```python
+# structure your project like this
+# my_project/
+# ├── main.py
+# ├── processor.py
+# └── extractor.py
+
+# processor.py
+def process_document(doc):
+    # processing logic
+    pass
+
+# extractor.py
+def extract_data(doc):
+    # extraction logic
+    pass
+```
+
+## Common Patterns and Anti-patterns
+
+### Prefer Context Managers for Resource Management
+Always use context managers when dealing with file I/O to ensure resources are properly managed.
+
+❌ BAD
+```python
+file = open('document.pdf', 'rb')
+data = file.read()
+file.close()
+```
+
+✅ GOOD
+```python
+with open('document.pdf', 'rb') as file:
+    data = file.read()
+```
+
+## Performance Considerations
+
+### Optimize OCR Engine Selection
+Choose the right OCR engine based on your document type. For multilingual documents, use EasyOCR; for high-speed processing, use RapidOCR.
+
+❌ BAD
+```python
+from docling import OCR
+
+ocr = OCR(engine='tesseract')  # Not ideal for speed
+```
+
+✅ GOOD
+```python
+from docling import OCR
+
+ocr = OCR(engine='rapidocr')  # Best for speed and efficiency
+```
+
+### Enable Hardware Acceleration
+If your environment supports it, enable hardware acceleration to improve OCR performance significantly.
+
+✅ GOOD
+```python
+ocr = OCR(engine='rapidocr', use_gpu=True)  # Enable GPU for faster processing
+```
+
+## Common Pitfalls and Gotchas
+
+### Avoid Misalignment in Table Extraction
+Verify table boundary detection to prevent misalignment of columns, especially in multi-column formats.
+
+❌ BAD
+```python
+data = extract_data(doc)  # May lead to misaligned columns
+```
+
+✅ GOOD
+```python
+data = extract_data(doc, verify_table_boundaries=True)  # Ensures accurate extraction
+```
+
+## Conclusion
+By following these best practices, you will enhance the performance, reliability, and maintainability of your Docling-based applications. Always remember to choose the right tools for your specific use case and keep your code organized and well-tested.

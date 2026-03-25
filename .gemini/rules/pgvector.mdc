@@ -1,0 +1,159 @@
+---
+description: This guide provides comprehensive best practices for using pgvector with PostgreSQL, focusing on performance optimization, data modeling, and security.
+globs: **/*
+---
+# pgvector Best Practices
+
+This document serves as a definitive guide for developers working with pgvector in PostgreSQL. It outlines actionable best practices, common pitfalls, and performance considerations to ensure efficient and scalable vector search implementations.
+
+## Code Organization and Structure
+
+### Use a Consistent Schema
+
+Define a clear schema for storing vectors. Always include metadata fields to facilitate easier querying and management.
+
+```sql
+CREATE TABLE embeddings (
+    id SERIAL PRIMARY KEY,
+    vector VECTOR(300), -- Adjust the dimension based on your embeddings
+    created_at TIMESTAMP DEFAULT NOW(),
+    metadata JSONB
+);
+```
+
+### Maintain Separation of Concerns
+
+Keep your database logic separate from application logic. Use stored procedures for complex queries involving vector operations.
+
+```sql
+CREATE OR REPLACE FUNCTION search_embeddings(query VECTOR, limit INT)
+RETURNS TABLE(id INT, distance FLOAT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT id, vector <=> query AS distance
+    FROM embeddings
+    ORDER BY vector <=> query
+    LIMIT limit;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+## Common Patterns and Anti-patterns
+
+### Use HNSW Indexes
+
+Always use HNSW (Hierarchical Navigable Small World) indexes for vector searches. They provide the best balance of recall and performance.
+
+```sql
+CREATE INDEX ON embeddings USING hnsw (vector);
+```
+
+❌ BAD: Using a linear scan for vector searches.
+
+✅ GOOD: Always create an HNSW index for efficient vector searches.
+
+### Avoid Storing Raw Vectors
+
+Don't store raw vectors directly in your application. Instead, use a dedicated table for embeddings to enhance maintainability and performance.
+
+## Performance Considerations
+
+### Optimize Index Parameters
+
+Fine-tune your HNSW index parameters based on your dataset size. For datasets larger than a million vectors, set `m` and `ef_construction` to optimize performance.
+
+```sql
+CREATE INDEX ON embeddings USING hnsw (vector) WITH (m = 16, ef_construction = 200);
+```
+
+### Use EXPLAIN ANALYZE for Query Optimization
+
+Always analyze your queries using `EXPLAIN ANALYZE` to understand performance bottlenecks and adjust parameters accordingly.
+
+```sql
+EXPLAIN ANALYZE SELECT * FROM search_embeddings('[0.1, 0.2, ...]', 10);
+```
+
+## Common Pitfalls and Gotchas
+
+### Misconfigured Probes
+
+Setting the `probes` parameter incorrectly can lead to poor performance. For larger datasets, use `sqrt(lists)` for optimal results.
+
+```sql
+SELECT * FROM search_embeddings('[0.1, 0.2, ...]', 10) WITH (probes = sqrt(1000));
+```
+
+❌ BAD: Using a static `probes` value regardless of dataset size.
+
+✅ GOOD: Dynamically adjust `probes` based on the number of lists.
+
+### Ignoring Memory Management
+
+Be mindful of memory usage when building indexes. Monitor your PostgreSQL instance to prevent out-of-memory errors.
+
+## Security Best Practices
+
+### Sanitize Input Data
+
+Always sanitize input data to prevent SQL injection attacks, especially when dealing with JSONB metadata.
+
+```sql
+INSERT INTO embeddings (vector, metadata) VALUES ($1, $2) 
+ON CONFLICT (id) DO UPDATE SET vector = EXCLUDED.vector, metadata = EXCLUDED.metadata;
+```
+
+### Use Role-Based Access Control
+
+Implement role-based access control to restrict who can insert or query vector data.
+
+```sql
+GRANT SELECT, INSERT ON embeddings TO app_user;
+REVOKE ALL ON embeddings FROM public;
+```
+
+## Query Optimization
+
+### Leverage Partitioning
+
+For large datasets, consider partitioning your embeddings table by date or another logical key to improve query performance.
+
+```sql
+CREATE TABLE embeddings_y2023 PARTITION OF embeddings FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+```
+
+### Use CTEs for Complex Queries
+
+For complex queries involving multiple steps, use Common Table Expressions (CTEs) to enhance readability and performance.
+
+```sql
+WITH ranked_embeddings AS (
+    SELECT id, vector <=> '[0.1, 0.2, ...]' AS distance
+    FROM embeddings
+)
+SELECT * FROM ranked_embeddings ORDER BY distance LIMIT 10;
+```
+
+## Data Modeling
+
+### Include Metadata for Context
+
+Always include metadata fields in your embeddings table to provide context for each vector. This allows for more meaningful queries.
+
+```sql
+ALTER TABLE embeddings ADD COLUMN description TEXT;
+```
+
+### Normalize Your Data
+
+Keep your data normalized to avoid redundancy and ensure data integrity. Use foreign keys to link related tables.
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT
+);
+
+ALTER TABLE embeddings ADD COLUMN user_id INT REFERENCES users(id);
+```
+

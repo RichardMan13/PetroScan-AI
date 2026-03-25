@@ -1,0 +1,109 @@
+---
+description: This guide helps developers effectively use MLflow for structured experiment tracking, reproducibility, and clean code organization in Python ML/MLOps projects.
+globs: **/*.py
+---
+# mlflow Best Practices
+
+## Code Organization and Structure
+
+### Use a Consistent Project Structure
+Organize your MLflow projects to enhance readability and maintainability. Follow this structure:
+
+```
+my_ml_project/
+├── MLproject
+├── conda.yaml
+├── src/
+│   ├── main.py
+│   ├── utils.py
+│   └── models/
+│       └── model.py
+└── data/
+    ├── raw/
+    └── processed/
+```
+
+- **MLproject:** Defines the project and its dependencies.
+- **conda.yaml:** Specifies the environment for reproducibility.
+- **src/:** Contains all source code.
+- **data/:** Organizes datasets.
+
+### ❌ BAD
+```plaintext
+my_project/
+- script1.py
+- script2.py
+```
+
+### ✅ GOOD
+```plaintext
+my_ml_project/
+├── MLproject
+├── conda.yaml
+├── src/
+└── data/
+```
+
+## Common Patterns and Anti-patterns
+
+### Use MLflow Tracking for Logging
+Always log parameters, metrics, and artifacts using MLflow's tracking API. This ensures reproducibility and easy comparison of experiments.
+
+### ❌ BAD
+```python
+import mlflow
+
+# Forgetting to log parameters
+mlflow.start_run()
+# model.fit(X, y)
+mlflow.end_run()
+```
+
+### ✅ GOOD
+```python
+import mlflow
+
+mlflow.start_run()
+mlflow.log_param("alpha", 0.01)
+mlflow.log_metric("rmse", 0.123)
+# model.fit(X, y)
+mlflow.log_artifact("model.pkl")
+mlflow.end_run()
+```
+
+## Performance Considerations
+
+### Batch Logging
+When logging large datasets or metrics, batch log them to improve performance.
+
+### ❌ BAD
+```python
+for i in range(1000):
+    mlflow.log_metric("metric", i)
+```
+
+### ✅ GOOD
+```python
+metrics = {i: i * 0.1 for i in range(1000)}
+mlflow.log_metrics(metrics)
+```
+
+## Common Pitfalls and Gotchas
+
+### Forgetting to End Runs
+Always ensure that you end your MLflow run to avoid memory leaks and data corruption.
+
+### ❌ BAD
+```python
+mlflow.start_run()
+# Some operations...
+# Missing mlflow.end_run()
+```
+
+### ✅ GOOD
+```python
+mlflow.start_run()
+# Some operations...
+mlflow.end_run()  # Always end your run
+```
+

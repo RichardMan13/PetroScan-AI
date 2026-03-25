@@ -1,0 +1,168 @@
+---
+description: This document provides comprehensive guidelines for writing clean, maintainable, and efficient Python code, emphasizing modern best practices and common pitfalls.
+globs: **/*.py
+---
+# Python Best Practices
+
+This guide serves as a definitive resource for Python developers, outlining best practices in code organization, patterns, performance, type hints, virtual environments, packaging, and testing.
+
+## Code Organization and Structure
+
+### Use a Consistent Project Structure
+Organize your project with a clear structure to improve maintainability. Follow this recommended layout:
+
+```
+my_project/
+│
+├── src/
+│   ├── __init__.py
+│   ├── module1.py
+│   └── module2.py
+│
+├── tests/
+│   ├── __init__.py
+│   └── test_module1.py
+│
+├── requirements.txt
+└── README.md
+```
+
+### Avoid Circular Imports
+Circular imports can lead to confusing errors. Always structure your imports to avoid this issue.
+
+❌ BAD:
+```python
+# module1.py
+from module2 import function_b
+
+def function_a():
+    function_b()
+```
+
+✅ GOOD:
+```python
+# module1.py
+def function_a():
+    from module2 import function_b
+    function_b()
+```
+
+## Common Patterns and Anti-patterns
+
+### Use Context Managers for Resource Management
+Always use context managers for handling resources like files or network connections to ensure proper cleanup.
+
+❌ BAD:
+```python
+file = open('data.txt', 'r')
+data = file.read()
+file.close()
+```
+
+✅ GOOD:
+```python
+with open('data.txt', 'r') as file:
+    data = file.read()
+```
+
+## Performance Considerations
+
+### Prefer List Comprehensions Over Loops
+List comprehensions are more Pythonic and often faster than traditional loops.
+
+❌ BAD:
+```python
+squares = []
+for i in range(10):
+    squares.append(i * i)
+```
+
+✅ GOOD:
+```python
+squares = [i * i for i in range(10)]
+```
+
+## Common Pitfalls and Gotchas
+
+### Beware of Mutable Default Arguments
+Using mutable default arguments can lead to unexpected behavior. Always use `None` and set defaults inside the function.
+
+❌ BAD:
+```python
+def append_to_list(value, my_list=[]):
+    my_list.append(value)
+    return my_list
+```
+
+✅ GOOD:
+```python
+def append_to_list(value, my_list=None):
+    if my_list is None:
+        my_list = []
+    my_list.append(value)
+    return my_list
+```
+
+## Type Hints
+
+### Use Type Hints for Function Signatures
+Type hints improve code readability and help catch errors early. Use them consistently.
+
+✅ GOOD:
+```python
+def add_numbers(a: int, b: int) -> int:
+    return a + b
+```
+
+## Virtual Environments
+
+### Always Use Virtual Environments
+Isolate dependencies by using virtual environments. This prevents conflicts between projects.
+
+To create a virtual environment, use:
+```bash
+python -m venv venv
+```
+Activate it with:
+- On Windows: `venv\Scripts\activate`
+- On macOS/Linux: `source venv/bin/activate`
+
+## Packaging
+
+### Use `setuptools` for Packaging
+When distributing your project, use `setuptools` for packaging. Create a `setup.py` file as follows:
+
+```python
+from setuptools import setup, find_packages
+
+setup(
+    name='my_project',
+    version='0.1',
+    packages=find_packages(),
+    install_requires=[
+        'requests',
+    ],
+)
+```
+
+## Testing Approaches
+
+### Use `pytest` for Testing
+Adopt `pytest` for your testing framework due to its simplicity and powerful features.
+
+To create a test, structure it like this:
+
+```python
+# tests/test_module1.py
+def test_add_numbers():
+    from src.module1 import add_numbers
+    assert add_numbers(1, 2) == 3
+```
+
+Run your tests with:
+```bash
+pytest tests/
+```
+
+## Conclusion
+By following these best practices, you will write cleaner, more maintainable, and efficient Python code. Remember to keep your code organized, leverage modern language features, and always test your code thoroughly.
