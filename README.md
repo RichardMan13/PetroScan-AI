@@ -105,21 +105,45 @@ pytest tests/
 
 ## Checklist de Execução
 
+### Fase 0: Curadoria e Obtenção do "Golden Dataset"
+Esta etapa visa criar uma "âncora de verdade" (Ground Truth) para validar se os algoritmos de extração, visão e normalização estão operando conforme o rigor técnico exigido.
+
+#### 1. Casos de Cobertura: Documentos Não Estruturados (Normas N-XXXX)
+- [ ] **Caso de Tabelas Complexas**: Obtenção de normas com tabelas de especificações de materiais (ex: pressões nominais por classe de flange). O teste deve validar se o `docling` mantém a integridade estrutural linha x coluna.
+- [ ] **Caso de Referência Cruzada**: Coleta de normas que citem outras normas (ex: "Conforme N-133"). O dataset deve cobrir a capacidade de identificação e linkagem dessas entidades.
+- [ ] **Caso de Revisões Conflitantes**: Obtenção das versões A e B da mesma norma. O sistema deve ser testado para priorizar a versão vigente via metadados.
+
+#### 2. Casos de Cobertura: Documentos Semi-Estruturados (P&IDs)
+- [ ] **Caso de Densidade de Tags**: Seleção de P&IDs de áreas densas (ex: Unidade de Separação) onde as tags estão sobrepostas ou muito próximas, testando a precisão das *Bounding Boxes*.
+- [ ] **Caso de Degradação de Imagem**: Inclusão de PDFs escaneados com ruído visual ou inclinação (*skew*) para validar o pipeline de pré-processamento e OCR.
+- [ ] **Caso de Continuidade de Linha**: Diagramas com setas de continuidade para outras folhas. O dado deve validar a extração da referência para a folha subsequente.
+
+#### 3. Casos de Cobertura: Dados Estruturados (Inventário)
+- [ ] **Caso de Inconsistência de Sintaxe**: Amostras onde o inventário possui a tag `P-101-A` e o P&ID apresenta `P101A`, validando o algoritmo de *Fuzzy Matching* e normalização.
+- [ ] **Caso de Ativo Órfão**: Inclusão proposital de tags no inventário que não existem nos diagramas (e vice-versa) para validar a funcionalidade de *Gap Analysis*.
+- [ ] **Caso de Duplicidade de TAG**: Ativos com nomes idênticos em módulos diferentes da plataforma, testando a desambiguação via metadados de localização.
+
+#### 4. Validação HTR e Ground Truth
+- [ ] **Notas Manuais**: Coleta de diários de sondagem com caligrafias variadas para teste do `TrOCR`.
+- [ ] **Criação do Golden Dataset Inicial**: Consolidação de pares `Pergunta -> Resposta Esperada` com metadados de evidência para cálculo de *Recall@K*.
+
 ### Fase 1: Alicerce (Data Engineering)
 - [ ] Configuração do Docker Compose (Postgres, RabbitMQ, MinIO).
+- [ ] Configuração de Dead Letter Exchange (DLX) no RabbitMQ com política de retry (max 3x) direcionando falhas para `human.review`.
+- [ ] Construção do boilerplate arquitetural dos Workers utilizando `pika` para consumo atômico de eventos.
 - [ ] Definição dos schemas iniciais (Metadados e Tabelas Vetoriais).
 
 ### Fase 2: Não Estruturados (Semantic Layer)
-- [ ] Desenvolvimento do Ingestion Worker.
+- [ ] Desenvolvimento do Ingestion Worker utilizando `docling` para extração base do texto e parseamento de PDF/Plantas.
 - [ ] Implementação de TrOCR para manuscritos e Sentence-Transformers para as normas.
-- [ ] Testes de busca semântica via Cosine Distance.
+- [ ] Testes de busca semântica via Cosine Distance e blindagem lógica dos workers base utilizando `pytest`.
 
 ### Fase 3: Semi-Estruturados (Computer Vision)
 - [ ] Implementação do LayoutLMv3 para detecção de tabelas e blocos.
 - [ ] Integração do CLIP para indexação visual de símbolos de P&IDs.
 
 ### Fase 4: Estruturados (Enrichment)
-- [ ] Ingestão de CSVs de inventário.
+- [ ] Implementação de pipeline ETL com `pandas` para estruturação, sanitização e ingestão dos CSVs de inventário.
 - [ ] Criação de Views complexas para o "Golden Join".
 - [ ] Implementação de Fuzzy Matching para normalização de nomes de equipamentos.
 
