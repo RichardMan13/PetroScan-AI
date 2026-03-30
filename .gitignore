@@ -205,3 +205,31 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Data and Artifacts (PetroScan-AI Specific)
+data/
+outputs/
+mlruns/
+.mlflow/
+
+# Models and AI Checkpoints (Hugging Face / PyTorch caching)
+models/
+checkpoints/
+.cache/
+
+# Temporary and Logs
+tmp/
+temp/
+*.log
+
+# Docker Persistence (In case of bind mounting volumes)
+*_data/
+
+# Document Safety Layer (Prevent large technical binaries)
+*.pdf
+*.xlsx
+*.csv
+*.png
+*.jpg
+*.svg
+*.docx

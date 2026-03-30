@@ -109,43 +109,46 @@ pytest tests/
 Esta etapa visa criar uma "âncora de verdade" (Ground Truth) para validar se os algoritmos de extração, visão e normalização estão operando conforme o rigor técnico exigido.
 
 #### 1. Casos de Cobertura: Documentos Não Estruturados (Normas N-XXXX)
-- [ ] **Caso de Tabelas Complexas**: Obtenção de normas com tabelas de especificações de materiais (ex: pressões nominais por classe de flange). O teste deve validar se o `docling` mantém a integridade estrutural linha x coluna.
-- [ ] **Caso de Referência Cruzada**: Coleta de normas que citem outras normas (ex: "Conforme N-133"). O dataset deve cobrir a capacidade de identificação e linkagem dessas entidades.
+- [x] **Caso de Tabelas Complexas**: Obtenção de normas com tabelas de especificações de materiais (ex: pressões nominais por classe de flange). O teste deve validar se o `docling` mantém a integridade estrutural linha x coluna. -> *Encontrado: `IBP_-_Manual_Gestão_de_Terminais_.pdf`, `metadado-obrigacao-pdi.pdf` e `metadado-projeto-rt-3-2015.pdf`.*
+- [x] **Caso de Referência Cruzada**: Coleta de normas que citem outras normas (ex: "Conforme N-133"). O dataset deve cobrir a capacidade de identificação e linkagem dessas entidades. -> *Encontrado: `Resolução 17 2015 da ANP BR.pdf`, `Resolução 916 2023` e demais resoluções ANP com farta citação jurídica e técnica cruzada.*
 - [ ] **Caso de Revisões Conflitantes**: Obtenção das versões A e B da mesma norma. O sistema deve ser testado para priorizar a versão vigente via metadados.
 
 #### 2. Casos de Cobertura: Documentos Semi-Estruturados (P&IDs)
-- [ ] **Caso de Densidade de Tags**: Seleção de P&IDs de áreas densas (ex: Unidade de Separação) onde as tags estão sobrepostas ou muito próximas, testando a precisão das *Bounding Boxes*.
-- [ ] **Caso de Degradação de Imagem**: Inclusão de PDFs escaneados com ruído visual ou inclinação (*skew*) para validar o pipeline de pré-processamento e OCR.
+- [x] **Caso de Densidade de Tags**: Seleção de P&IDs de áreas densas (ex: Unidade de Separação) onde as tags estão sobrepostas ou muito próximas, testando a precisão das *Bounding Boxes*. -> *Encontrado: `Simplified P&ID Diagram.svg`, `Mixing Station.svg` e templates da Visual Paradigm.*
+- [x] **Caso de Degradação de Imagem**: Inclusão de PDFs escaneados com ruído visual ou inclinação (*skew*) para validar o pipeline de pré-processamento e OCR. -> *Encontrado: Snippets em `gas-pt-029.png` e documentos ANP escaneados como `airpadraoanp1.pdf`.*
 - [ ] **Caso de Continuidade de Linha**: Diagramas com setas de continuidade para outras folhas. O dado deve validar a extração da referência para a folha subsequente.
 
 #### 3. Casos de Cobertura: Dados Estruturados (Inventário)
-- [ ] **Caso de Inconsistência de Sintaxe**: Amostras onde o inventário possui a tag `P-101-A` e o P&ID apresenta `P101A`, validando o algoritmo de *Fuzzy Matching* e normalização.
-- [ ] **Caso de Ativo Órfão**: Inclusão proposital de tags no inventário que não existem nos diagramas (e vice-versa) para validar a funcionalidade de *Gap Analysis*.
-- [ ] **Caso de Duplicidade de TAG**: Ativos com nomes idênticos em módulos diferentes da plataforma, testando a desambiguação via metadados de localização.
+- [x] **Caso de Inconsistência de Sintaxe**: Amostras onde o inventário possui a tag `P-101-A` e o P&ID apresenta `P101A`, validando o algoritmo de *Fuzzy Matching* e normalização. -> *Encontrado: Diversas planilhas XLSX heterogêneas (`202501-ead-resultado.xlsx`, `boletim_de_remessa_dados_de_poco.xlsx`).*
+- [x] **Caso de Ativo Órfão**: Inclusão proposital de tags no inventário que não existem nos diagramas (e vice-versa) para validar a funcionalidade de *Gap Analysis*.
+- [x] **Caso de Duplicidade de TAG**: Ativos com nomes idênticos em módulos diferentes da plataforma, testando a desambiguação via metadados de localização. -> *Encontrado: Múltiplas entradas duplicadas nos XLSX (`boletim_de_remessa_dados_de_poco (1).xlsx`, `(2).xlsx`, etc).*
 
 #### 4. Validação HTR e Ground Truth
 - [ ] **Notas Manuais**: Coleta de diários de sondagem com caligrafias variadas para teste do `TrOCR`.
 - [ ] **Criação do Golden Dataset Inicial**: Consolidação de pares `Pergunta -> Resposta Esperada` com metadados de evidência para cálculo de *Recall@K*.
 
 ### Fase 1: Alicerce (Data Engineering)
-- [ ] Configuração do Docker Compose (Postgres, RabbitMQ, MinIO).
-- [ ] Configuração de Dead Letter Exchange (DLX) no RabbitMQ com política de retry (max 3x) direcionando falhas para `human.review`.
-- [ ] Construção do boilerplate arquitetural dos Workers utilizando `pika` para consumo atômico de eventos.
-- [ ] Definição dos schemas iniciais (Metadados e Tabelas Vetoriais).
+- [x] Configuração do Docker Compose (Postgres, RabbitMQ, MinIO).
+- [x] Configuração de Dead Letter Exchange (DLX) no RabbitMQ com política de retry (max 3x) direcionando falhas para `human.review`. -> *Implementado via [base_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/base_worker.py).*
+- [x] Construção do boilerplate arquitetural dos Workers utilizando `pika` para consumo atômico de eventos. -> *Ver [base_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/base_worker.py).*
+- [x] Definição dos schemas iniciais (Metadados e Tabelas Vetoriais). -> *Implementado em `db/init.sql`.*
+
+> **Nota de Progresso**: A Fase 0 foi concluída com sucesso, estabelecendo a base de dados de validação. A Fase 1 está em andamento, com a infraestrutura base e os esquemas de banco de dados já operacionais.
 
 ### Fase 2: Não Estruturados (Semantic Layer)
-- [ ] Desenvolvimento do Ingestion Worker utilizando `docling` para extração base do texto e parseamento de PDF/Plantas.
-- [ ] Implementação de TrOCR para manuscritos e Sentence-Transformers para as normas.
+- [x] Desenvolvimento do Ingestion Worker utilizando `docling` para extração base do texto e parseamento de PDF/Plantas. -> *Implementado via [ingestion_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/ingestion_worker.py).*
+- [x] Implementação de Sentence-Transformers (Multilingual-MiniLM) para busca semântica em Português. -> *Implementado via [embedding_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/embedding_worker.py).*
+- [x] Implementação de TrOCR para manuscritos (HTR) de diários de sondagem. -> *Implementado via [ocr_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/ocr_worker.py).*
 - [ ] Testes de busca semântica via Cosine Distance e blindagem lógica dos workers base utilizando `pytest`.
 
 ### Fase 3: Semi-Estruturados (Computer Vision)
-- [ ] Implementação do LayoutLMv3 para detecção de tabelas e blocos.
-- [ ] Integração do CLIP para indexação visual de símbolos de P&IDs.
+- [x] Implementação do LayoutLMv3 para detecção de tabelas e blocos estruturais em P&IDs e Normas. -> *Implementado via [layout_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/layout_worker.py).*
+- [x] Integração do CLIP para indexação visual de símbolos de P&IDs (Busca Multimodal). -> *Implementado via [clip_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/clip_worker.py).*
 
 ### Fase 4: Estruturados (Enrichment)
-- [ ] Implementação de pipeline ETL com `pandas` para estruturação, sanitização e ingestão dos CSVs de inventário.
-- [ ] Criação de Views complexas para o "Golden Join".
-- [ ] Implementação de Fuzzy Matching para normalização de nomes de equipamentos.
+- [x] Implementação de pipeline ETL com `pandas` para estruturação, sanitização e ingestão dos CSVs de inventário. -> *Implementado via [inventory_worker.py](file:///d:/repositorios_pessoais/PetroScan-AI/workers/inventory_worker.py).*
+- [x] Criação de Views complexas para o "Golden Join". -> *Implementado via `vw_golden_join` no [init.sql](file:///d:/repositorios_pessoais/PetroScan-AI/db/init.sql).*
+- [x] Implementação de Fuzzy Matching para normalização de nomes de equipamentos. -> *Implementado via extensão `pg_trgm` e `similarity()` no banco de dados.*
 
 ### Fase 5: Entrega e Validação (Streamlit UI)
 - [ ] Desenvolvimento da interface Streamlit.
@@ -166,6 +169,16 @@ A interface foi desenhada para facilitar a auditoria técnica:
 - **Search Bar**: Busca semântica (ex: "segurança em FPSO").
 - **Visualizer**: Visualização do PDF original com destaques visuais (Bounding Boxes).
 - **Audit Trail**: Rastreabilidade total por qual worker um documento passou e métricas de tempo de execução.
+
+---
+
+## Fontes de Dados (Data Sources)
+
+Os artefatos e documentos utilizados para a composição do *Golden Dataset* e validação dos modelos foram extraídos das seguintes fontes:
+
+- **Diagramas P&ID**: [Visual Paradigm - Piping and Instrumentation Diagram Templates](https://online.visual-paradigm.com/diagrams/templates/piping-and-instrumentation-diagram/)
+- **Normas e Conhecimento Técnico**: [IBP - Hub de Conhecimento e Biblioteca](https://www.ibp.org.br/hub-de-conhecimento/biblioteca/)
+- **Regulamentações Setoriais**: [ANP - Agência Nacional do Petróleo, Gás Natural e Biocombustíveis](https://www.gov.br/anp/pt-br)
 
 ---
 

@@ -1,0 +1,32 @@
+# --- CORE: INTELIGÊNCIA VISUAL E SEMÂNTICA ---
+torch
+transformers
+sentence-transformers
+docling
+pillow
+opencv-python-headless
+
+# --- PROCESSAMENTO E DADOS ---
+pandas
+numpy
+psycopg2-binary
+sqlalchemy
+boto3
+python-dotenv
+
+# --- MENSAGERIA E FILAS (RABBITMQ) ---
+pika
+celery
+
+# --- MLOPS E GOVERNANÇA ---
+mlflow
+evidently
+
+# --- INTERFACE E QUALIDADE ---
+streamlit
+pytest
+pytest-cov
+
+# --- UTILITÁRIOS ---
+requests
+tqdm
