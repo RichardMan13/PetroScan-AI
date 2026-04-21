@@ -7,6 +7,8 @@ from PIL import Image
 from typing import Dict, Any
 from transformers import LayoutLMv3Processor, LayoutLMv3ForTokenClassification
 import boto3
+import mlflow
+import time
 from tempfile import NamedTemporaryFile
 
 # Importar o BaseWorker
@@ -26,7 +28,7 @@ class LayoutWorker(BaseWorker):
         
         # Conexão com Postgres
         self.db_params = {
-            'host': 'localhost',
+            'host': os.getenv("POSTGRES_HOST", "127.0.0.1"),
             'database': os.getenv("POSTGRES_DB", "petroscan_db"),
             'user': os.getenv("POSTGRES_USER", "petroscan_admin"),
             'password': os.getenv("POSTGRES_PASSWORD", "petroscan_secure_pwd"),
@@ -36,7 +38,7 @@ class LayoutWorker(BaseWorker):
         # Conexão com S3 (MinIO)
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://localhost:9000"),
+            endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://127.0.0.1:9000"),
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "petroscan_root"),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "petroscan_secret_key"),
             region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -51,6 +53,11 @@ class LayoutWorker(BaseWorker):
         self.model = LayoutLMv3ForTokenClassification.from_pretrained(model_name).to(self.device)
         logger.info("Modelo LayoutLMv3 carregado com sucesso.")
 
+        # Configuração do MLflow
+        mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+        mlflow.set_tracking_uri(mlflow_uri)
+        mlflow.set_experiment("PetroScan-Layout-Analysis")
+
     def process_task(self, body: Dict[str, Any]) -> bool:
         """
         Executa a análise de layout em uma página de documento.
@@ -59,6 +66,12 @@ class LayoutWorker(BaseWorker):
         s3_key = body.get('s3_key')
         bucket = body.get('bucket', 'petroscan-docs')
         document_id = body.get('document_id')
+        
+        start_time = time.time()
+        with mlflow.start_run(run_name=f"Layout-{document_id[:8]}"):
+            mlflow.log_param("document_id", document_id)
+            mlflow.log_param("device", self.device)
+            mlflow.log_param("s3_key", s3_key)
 
         if not s3_key or not document_id:
             logger.error("Mensagem malformada: s3_key ou document_id ausentes.")
@@ -66,9 +79,12 @@ class LayoutWorker(BaseWorker):
 
         try:
             # 1. Download da página (imagem) do MinIO
-            with NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
-                self.s3_client.download_file(bucket, s3_key, tmp_file.name)
-                temp_path = tmp_file.name
+            tmp = NamedTemporaryFile(delete=False, suffix=".png")
+            temp_path = tmp.name
+            tmp.close()  # Fecha o handle para evitar WinError 32 no Windows
+
+            logger.info(f"Baixando imagem S3: {s3_key}...")
+            self.s3_client.download_file(bucket, s3_key, temp_path)
 
             # 2. Carregar Imagem
             image = Image.open(temp_path).convert("RGB")
@@ -97,7 +113,7 @@ class LayoutWorker(BaseWorker):
             for i, pred_id in enumerate(predictions):
                 label = id2label[pred_id].lower()
                 
-                # Filtrar o que é relevante para o Golden Join (Ignorar o que não é estrutural)
+                # Filtrar o que é relevante para a estruturação de dados (Ignorar o que não é estrutural)
                 if label in ["table", "header", "figure", "symbol", "caption"]:
                     box = token_boxes[i]
                     
@@ -137,7 +153,12 @@ class LayoutWorker(BaseWorker):
             
             # Limpeza
             os.unlink(temp_path)
-            logger.info(f"Análise de layout e persistência geométrica concluída para {document_id}.")
+            
+            processing_time = time.time() - start_time
+            mlflow.log_metric("processing_time_sec", processing_time)
+            mlflow.log_metric("detected_entities", len(detected_entities))
+            
+            logger.info(f"Análise de layout e persistência geométrica concluída para {document_id}. Tempo: {processing_time:.2f}s")
             return True
 
         except Exception as e:

@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import pandas as pd
 import psycopg2
@@ -24,7 +25,7 @@ class InventoryWorker(BaseWorker):
         # Conexão com S3 (MinIO)
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://localhost:9000"),
+            endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://127.0.0.1:9000"),
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "petroscan_root"),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "petroscan_secret_key"),
             region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -32,7 +33,7 @@ class InventoryWorker(BaseWorker):
 
         # Conexão com Postgres
         self.db_params = {
-            'host': 'localhost',
+            'host': os.getenv("POSTGRES_HOST", "127.0.0.1"),
             'database': os.getenv("POSTGRES_DB", "petroscan_db"),
             'user': os.getenv("POSTGRES_USER", "petroscan_admin"),
             'password': os.getenv("POSTGRES_PASSWORD", "petroscan_secure_pwd"),
@@ -53,10 +54,12 @@ class InventoryWorker(BaseWorker):
 
         try:
             # 1. Download do arquivo do MinIO
-            with NamedTemporaryFile(delete=False, suffix=os.path.splitext(s3_key)[1]) as tmp_file:
-                logger.info(f"Baixando inventário: {s3_key}...")
-                self.s3_client.download_file(bucket, s3_key, tmp_file.name)
-                temp_path = tmp_file.name
+            tmp = NamedTemporaryFile(delete=False, suffix=os.path.splitext(s3_key)[1])
+            temp_path = tmp.name
+            tmp.close()  # Fecha o handle para evitar WinError 32 no Windows
+
+            logger.info(f"Baixando inventário: {s3_key}...")
+            self.s3_client.download_file(bucket, s3_key, temp_path)
 
             # 2. Leitura com Pandas (Suporte a CSV e Excel)
             if s3_key.endswith('.csv'):

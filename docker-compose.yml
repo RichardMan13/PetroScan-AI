@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
-  # DATABASE: PostgreSQL with pgvector (pg16/pgvector16)
+  # DATABASE: PostgreSQL with pgvector
   db:
-    image: pgvector/pgvector:16-pg16
+    image: pgvector/pgvector:pg16
     container_name: petroscan_postgres
     restart: always
     environment:
@@ -11,34 +9,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-petroscan_secure_pwd}
       POSTGRES_DB: ${POSTGRES_DB:-petroscan_db}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-petroscan_admin} -d ${POSTGRES_DB:-petroscan_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-petroscan_admin} -d ${POSTGRES_DB:-petroscan_db}" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MESSAGING: RabbitMQ with Management/UI
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: petroscan_rabbitmq
+  # MESSAGING: Redis Broker
+  redis:
+    image: redis:alpine
+    container_name: petroscan_redis
     restart: always
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_UI_PORT:-15672}:15672"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-      - rabbitmq_logs:/var/log/rabbitmq
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
-      interval: 20s
-      timeout: 10s
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
       retries: 5
 
   # STORAGE: MinIO (S3-compatible)
@@ -57,7 +50,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -78,15 +71,119 @@ services:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-petroscan_root}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-petroscan_secret_key}
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      MLFLOW_SERVER_ALLOWED_HOSTS: "*"
     command: >
-      mlflow server
-      --backend-store-uri postgresql://${POSTGRES_USER:-petroscan_admin}:${POSTGRES_PASSWORD:-petroscan_secure_pwd}@db:5432/${POSTGRES_DB:-petroscan_db}
-      --default-artifact-root s3://mlflow-artifacts/
-      --host 0.0.0.0
-      --port 5000
+      mlflow server --backend-store-uri postgresql://${POSTGRES_USER:-petroscan_admin}:${POSTGRES_PASSWORD:-petroscan_secure_pwd}@db:5432/${POSTGRES_DB:-petroscan_db} --default-artifact-root s3://mlflow-artifacts/ --host 0.0.0.0 --port 5000
+
+  # WORKER: Ingestion (Docling)
+  ingestion_worker:
+    build: .
+    container_name: petroscan_ingestion
+    command: python workers/ingestion_worker.py
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      AWS_ENDPOINT_URL: http://minio:9000
+      POSTGRES_USER: ${POSTGRES_USER:-petroscan_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-petroscan_secure_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-petroscan_db}
+      POSTGRES_PORT: 5432
+      HF_TOKEN: ${HUGGINGFACE_API_KEY}
+
+    volumes:
+      - .:/app
+
+  # WORKER: Embedding (Sentence-Transformers)
+  embedding_worker:
+    build: .
+    container_name: petroscan_embedding
+    command: python workers/embedding_worker.py
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      AWS_ENDPOINT_URL: http://minio:9000
+      POSTGRES_USER: ${POSTGRES_USER:-petroscan_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-petroscan_secure_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-petroscan_db}
+      POSTGRES_PORT: 5432
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      HF_TOKEN: ${HUGGINGFACE_API_KEY}
+
+    volumes:
+      - .:/app
+
+  # WORKER: Layout (LayoutLMv3 + Tesseract)
+  layout_worker:
+    build: .
+    container_name: petroscan_layout
+    command: python workers/layout_worker.py
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      AWS_ENDPOINT_URL: http://minio:9000
+      POSTGRES_USER: ${POSTGRES_USER:-petroscan_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-petroscan_secure_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-petroscan_db}
+      POSTGRES_PORT: 5432
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      HF_TOKEN: ${HUGGINGFACE_API_KEY}
+
+    volumes:
+      - .:/app
+
+  # WORKER: Inventory (Pandas)
+  inventory_worker:
+    build: .
+    container_name: petroscan_inventory
+    command: python workers/inventory_worker.py
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      AWS_ENDPOINT_URL: http://minio:9000
+      POSTGRES_USER: ${POSTGRES_USER:-petroscan_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-petroscan_secure_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-petroscan_db}
+      POSTGRES_PORT: 5432
+
+    volumes:
+      - .:/app
+
+  # INTERFACE: Streamlit UI
+  ui:
+    build: .
+    container_name: petroscan_ui
+    command: streamlit run ui/app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      AWS_ENDPOINT_URL: http://minio:9000
+      POSTGRES_USER: ${POSTGRES_USER:-petroscan_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-petroscan_secure_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-petroscan_db}
+      POSTGRES_PORT: 5432
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - .:/app
 
 volumes:
   postgres_data:
-  rabbitmq_data:
-  rabbitmq_logs:
+  redis_data:
   minio_data:

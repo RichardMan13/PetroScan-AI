@@ -13,10 +13,11 @@ psycopg2-binary
 sqlalchemy
 boto3
 python-dotenv
+pdf2image
 
-# --- MENSAGERIA E FILAS (RABBITMQ) ---
-pika
-celery
+# --- MENSAGERIA E FILAS (REDIS) ---
+redis
+pytesseract
 
 # --- MLOPS E GOVERNANÇA ---
 mlflow

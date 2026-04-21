@@ -2,8 +2,11 @@ import os
 import json
 import logging
 import psycopg2
+import boto3
 from typing import Dict, Any
 from sentence_transformers import SentenceTransformer
+import mlflow
+import time
 
 # Importar o BaseWorker
 from base_worker import BaseWorker
@@ -23,7 +26,7 @@ class EmbeddingWorker(BaseWorker):
         # Conexão com S3 (MinIO)
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://localhost:9000"),
+            endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://127.0.0.1:9000"),
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "petroscan_root"),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "petroscan_secret_key"),
             region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -31,7 +34,7 @@ class EmbeddingWorker(BaseWorker):
 
         # Conexão com Postgres
         self.db_params = {
-            'host': 'localhost',
+            'host': os.getenv("POSTGRES_HOST", "127.0.0.1"),
             'database': os.getenv("POSTGRES_DB", "petroscan_db"),
             'user': os.getenv("POSTGRES_USER", "petroscan_admin"),
             'password': os.getenv("POSTGRES_PASSWORD", "petroscan_secure_pwd"),
@@ -43,6 +46,11 @@ class EmbeddingWorker(BaseWorker):
         self.model = SentenceTransformer(model_name)
         self.embedding_dim = self.model.get_sentence_embedding_dimension()
         logger.info(f"Modelo carregado. Dimensão: {self.embedding_dim}")
+
+        # Configuração do MLflow
+        mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+        mlflow.set_tracking_uri(mlflow_uri)
+        mlflow.set_experiment("PetroScan-Embedding-Vectorization")
 
     def _chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 200) -> list:
         """Divide o texto em pedaços (chunks) com sobreposição para contexto."""
@@ -62,6 +70,11 @@ class EmbeddingWorker(BaseWorker):
         Gera vetores para múltiplos chunks baixados do S3.
         """
         document_id = body.get('document_id')
+        
+        start_time = time.time()
+        with mlflow.start_run(run_name=f"Embed-{document_id[:8]}"):
+            mlflow.log_param("document_id", document_id)
+            mlflow.log_param("embedding_model", self.model.get_sentence_embedding_dimension())
 
         if not document_id:
             logger.error("Mensagem malformada: document_id ausente.")
@@ -114,7 +127,12 @@ class EmbeddingWorker(BaseWorker):
             cur.close()
             conn.close()
             
-            logger.info(f"Processamento de {len(chunks)} embeddings concluído para {document_id}.")
+            
+            processing_time = time.time() - start_time
+            mlflow.log_metric("processing_time_sec", processing_time)
+            mlflow.log_metric("total_chunks", len(chunks))
+
+            logger.info(f"Processamento de {len(chunks)} embeddings concluído para {document_id}. Tempo: {processing_time:.2f}s")
             return True
 
         except Exception as e:
