@@ -6,7 +6,7 @@
 6: 
 7: ## Contexto do Projeto
 8: 
-9: **Missão:** Transmutar documentos complexos (Normas N-XXXX), diagramas de engenharia (P&IDs) e inventários da Petrobras em insights acionáveis através de um motor de Busca Semântica de alta precisão (Information Retrieval). O foco é prover evidências matemáticas de confiabilidade empíricas da busca (Recall@K, MRR) conectando metadados técnicos, sem utilizar agentes LLMs abstratos para geração de respostas por texto, bloqueando o risco de alucinações técnicas.
+9: **Missão:** Transmutar documentos complexos (Normas N-XXXX), diagramas de engenharia (P&IDs) e inventários corporativos de petróleo em insights acionáveis através de um motor de Busca Semântica de alta precisão (Information Retrieval). O foco é prover evidências matemáticas de confiabilidade empíricas da busca (Recall@K, MRR) conectando metadados técnicos, sem utilizar agentes LLMs abstratos para geração de respostas por texto, bloqueando o risco de alucinações técnicas.
 10: 
 11: ---
 12: 

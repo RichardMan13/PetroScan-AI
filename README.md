@@ -4,7 +4,7 @@
 
 O **PetroScan-AI** é um ecossistema de processamento de documentos técnicos projetado para unificar o conhecimento contido em normas regulamentadoras, diagramas de engenharia (P&IDs) e inventários de ativos. 
 
-Este projeto utiliza uma arquitetura multimodal e orientada a eventos para transformar dados não estruturados em insights acionáveis para operações da Petrobras.
+Este projeto utiliza uma arquitetura multimodal e orientada a eventos para transformar dados não estruturados em insights acionáveis para operações industriais de óleo e gás.
 
 ---
 
@@ -77,12 +77,11 @@ O PetroScan-AI foca na unificação de fontes heterogêneas no PostgreSQL via me
 - **Indexação**: Utiliza pgvector com algoritmo **HNSW** para performance de busca aproximada (ANN) em larga escala.
 
 ### Lógica de Recuperação
-O sistema realiza o cruzamento de três camadas de dados:
-1. **Dados Não Estruturados**: Texto extraído das Normas N-XXXX.
-2. **Dados Semi-Estruturados**: Tags de equipamentos extraídos visualmente de P&IDs.
-3. **Dados Estruturados**: CSV/JSON de inventário de ativos da plataforma.
+A fundação de recuperação permite isolar contextos via:
+1. **Dados Não Estruturados**: Recuperação orgânica de trechos e parágrafos exatos das Normas N-XXXX através de similaridade vetorial.
+2. **Dados Estruturados e Visuais**: Visualização direta do inventário pré-higienizado de TAGs e de suas contrapartes físicas detectadas nos diagramas P&ID.
 
-> **Exemplo de uso**: Busca por "Bomba de Recalque" e filtragem por metadados para verificar se os requisitos da Norma Técnica correspondem ao ativo no inventário.
+> **Exemplo de uso via Streamlit**: Processar a busca livre por termos técnicos complexos ("falha em bombas") e visualizar instantaneamente o trecho da normativa técnica correspondente.
 
 ---
 
@@ -92,11 +91,11 @@ O sistema realiza o cruzamento de três camadas de dados:
 PetroScan-AI/
 ├── .env.example          # Template para variáveis de ambiente
 ├── docker-compose.yml    # Orquestração da infraestrutura (Postgres, Redis, MinIO, Workers)
-├── Dockerfile            # Configuração unificada de containeragem e OCR para os workers
+├── Dockerfile            # Configuração unificada de containeragem dos workers
 ├── GEMINI.md             # Guia de Contexto Mestre para a interação da Inteligência Artificial
 ├── requirements.txt      # Gerenciamento de dependências Python
 ├── db/                   # Scripts de inicialização do PostgreSQL e schemas Vector (Init SQL)
-├── workers/              # Workers especialistas (Layout, OCR/Ingestion, Embeddings)
+├── workers/              # Workers especialistas (Ingestion, Layout, Embedding, Inventory)
 ├── scripts/              # Pipelines de execução, data quality, tracking, monitoramento
 ├── data/                 # Conjuntos unificados de dados (Golden Dataset, Inventário, PDFs, P&IDs)
 ├── tmp/                  # Processos e blocos temporários de processamento em disco
@@ -159,7 +158,6 @@ Esta etapa visa criar uma "âncora de verdade" (Ground Truth) para validar se os
 
 ### Fase 4: Estruturados (Enrichment)
 - [x] Implementação de pipeline ETL com `pandas` para ingestão dos CSVs de inventário.
-- [x] Implementação de busca combinada via metadados e similaridade vetorial *(Cancelado por decisão de escopo do MVP)*.
 - [x] Implementação de Fuzzy Matching para normalização de nomes de equipamentos.
 
 ### Fase 5: Entrega e Validação (Streamlit UI)
