@@ -31,8 +31,8 @@ graph TD
     E -->|Fila: task.embedding| G[Embedding Worker]
 
     %% Desacoplamento Seguro
-    D -.->|Baixa as imagens da página| F
-    D -.->|Baixa o texto extraído| G
+    D -.->|Download de Arquivos Brutos| F
+    D -.->|Download de Arquivos Textuais| G
 
     %% Unificação e Persistência Vetorial
     C -->|Salva Metadados Limpos| H[(PostgreSQL / pgvector)]
@@ -40,9 +40,9 @@ graph TD
     G -->|Grava Indexação HNSW| H
 
     %% Telescopia de Qualidade (MLOps)
-    I[MLflow Tracker] -.->|Registra Tempos e Entities| F
-    I -.->|Acompanha Dimensões| G
-    J[Evidently AI] -.->|Alerta Circuit Breaker| H
+    F -.->|Log de Tempos e Execuções| I[MLflow Tracker]
+    G -.->|Log de Qualidade do Vetor| I
+    J[Evidently AI] -.->|Inspeção Externa Anti-Drift| H
 ```
 
 ### Como os Workers Funcionam (Comunicação via Redis)
@@ -106,22 +106,18 @@ PetroScan-AI/
 ## Como Executar (Getting Started)
 
 1. Clone o repositório em seu ambiente local.
-2. Copie o template do ambiente executando `cp .env.example .env` e preencha as credenciais necessárias (banco de dados, MinIO e Redis).
-3. Suba toda a infraestrutura através do Docker Compose:
+2. Crie e proteja o seu ambiente copiando `cp .env.example .env` e substituindo com suas chaves locais ou em nuvem.
+3. Suba toda a malha de infraestrutura passiva construindo as imagens através do Compose:
 
 ```bash
 docker-compose up -d --build
 ```
 
-## Testes e Qualidade
+4. **Acione o Motor com os Scripts (Triggers)**: Os Workers sobem no Docker Compose de forma passiva (ouvindo o Redis). Para que a inteligência artificial realmente comece a trabalhar, você precisa utilizar os scripts de ignição contidos na pasta `scripts/`. Eles publicam ordens no Redis mandando os Workers lerem os documentos. Exemplo:
 
-A cobertura de código e validação lógica são inegociáveis. Toda a base utiliza a framework **pytest** de acordo com os guias internos do projeto.
-
-Para certificar a integridade dos módulos dos workers e algoritmos localmente:
 ```bash
-pytest tests/
+python scripts/trigger_ingestion.py
 ```
-
 ---
 
 ## Checklist de Execução
